@@ -2,4 +2,70 @@
 title: "Two Parameters"
 author: "Melody Liu"
 format: html
+execute: 
+  echo: false
 ---
+
+```{r}
+#| message: FALSE
+library(primer.data)
+library(tidyverse)
+library(tidybayes)
+library(brms)
+library(gtsummary)
+```
+
+```{r}
+#| cache: TRUE
+fit_male_height <- brm(formula = height ~ 1,
+    data = ch5,
+    family = gaussian(),
+    silent = 2,
+    refresh = 0, 
+    seed = 12)
+```
+
+```{r}
+tbl_regression(fit_male_height, intercept = TRUE)
+```
+
+```{r}
+#| label: plot
+ndata <- tibble(.rows = 1)
+
+fit_male_height |>
+  add_predicted_draws(newdata = ndata) |>
+  ggplot(aes(.prediction)) +
+  geom_histogram(aes(y = after_stat(count/sum(count))),
+                  bins = 100) +
+  labs(title = "Posterior for Height of Random Male",
+        subtitle = "Uncertainty for a singe individual is much greater than for the expected value",
+        x = "Height(cm)",
+        y = "Probability",
+        caption = "Data source: NHANES") +
+  scale_x_continuous(labels = scales::number_format()) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+```
+
+```{r}
+fit_male_height |>
+ add_predicted_draws(newdata = ndata) |>
+ mutate(tall = if_else(.prediction > 180, TRUE, FALSE)) |>
+ summarize(odds = mean(tall))
+```
+
+What is the probability that the next man we meet will be taller than 180 centimeters? Using the data from the National Health and Nutrition Examination Survey (which includes 15 variables including physical attributes like height and weight), we seek to create a model of height for adult men. In this survey, was height measurement consistent (i.e. with or without shoes)? Later, height was modeled using an intercept-only regression. The average height of adult men in America in 2024 is 176 cm, with standard deviation of 7.48 cm.
+
+```{r}
+nhanes |>
+  filter(sex == "Male", age >= 18) |>
+  select(height) |>
+  drop_na() |>
+  ggplot(aes(height)) +
+  geom_histogram(bins = 50) +
+  labs(title = "Male Adult Height in the US in 2010",
+        x = "Height (cm)",
+        y = "Count",
+        caption = "Source: National Health and Nutrition Examination Survey")
+```
+
